@@ -80,9 +80,20 @@ def test_invalid_timeouts_are_rejected(name):
         VoiceInput(microphone_factory=FakeMicrophone, **kwargs)
 
 
-def test_valid_capture_completes_within_response_target():
-    started = time.perf_counter()
+def test_voice_capture_meets_component_response_target_over_100_runs():
+    """Use fakes to verify VoiceInput itself adds negligible processing latency.
 
-    assert build_voice_input(FakeRecognizer()).capture() == "Volume Up"
+    The end-to-end performance check (capture through dispatcher) belongs in
+    the dispatcher integration suite. This component-level check deliberately
+    avoids microphone hardware and the external speech service.
+    """
+    durations = []
 
-    assert time.perf_counter() - started < 2
+    for _ in range(100):
+        started = time.perf_counter()
+
+        assert build_voice_input(FakeRecognizer()).capture() == "Volume Up"
+
+        durations.append(time.perf_counter() - started)
+
+    assert sum(duration < 2 for duration in durations) >= 95
