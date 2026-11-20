@@ -19,10 +19,18 @@ class VolumeControl:
         return self._run(self._controller.volume_down, "Volume decreased")
 
     def _run(self, action: Callable[[], None], success_message: str) -> str:
-        """Call the backend `steps` times; never let a backend error crash the app."""
+        """Call the backend `steps` times; never let a backend error crash the app.
+
+        If a multi-step change fails part-way, the message says how many steps were
+        already applied, because the volume has genuinely moved by that much.
+        """
+        applied = 0
         try:
             for _ in range(self._steps):
                 action()
+                applied += 1
         except Exception as exc:
+            if applied:
+                return f"Volume change failed after {applied} of {self._steps} steps: {exc}"
             return f"Volume change failed: {exc}"
         return success_message

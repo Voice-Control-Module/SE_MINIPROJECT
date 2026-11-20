@@ -106,7 +106,7 @@ Python 3.12+ is used with pytest for tests, SpeechRecognition (or an approved su
 | VoiceInput | `capture()` | None | `str` recognised text, or `None` for timeout, unrecognised speech, blank text, service/device failure. |
 | Parser | `parse_command(text)` | `str | None` | `Command | None`; no exception for unsupported/blank input. |
 | Dispatcher | `handle_text(text)` | `str | None` | User-facing success/failure message. |
-| VolumeControl | `increase()`, `decrease()` | None | Success/failure message; invokes matching port method. |
+| VolumeControl | `increase()`, `decrease()` | None | Success/failure message; invokes matching port method. If a multi-step change fails part-way, the message reports how many steps were already applied. |
 | PlaybackControl | `play()`, `pause()`, `resume()` | None | Success/failure message; changes state only after success. |
 | TrackControl | `next()`, `previous()` | None | Success/failure message. |
 | MediaController | seven abstract methods | None | Raises platform exception only to its caller; feature module contains it. |

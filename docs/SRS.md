@@ -163,7 +163,7 @@ Automated evidence is summarized in [VALIDATION.md](VALIDATION.md). Real device 
 | FR-11–FR-12 | Track, backend | `track/tests/test_track_control.py`, `tests/test_main.py::test_command_reaches_backend` | Pass; device check pending |
 | FR-13 | Parser, dispatcher | `test_unsupported_input_returns_none`, `test_unsupported_command_returns_message_and_does_nothing` | Pass |
 | FR-14 | Dispatcher | `tests/test_main.py::test_command_reaches_backend`, `test_every_command_has_a_route` | Pass |
-| FR-15, NFR-02 | Failure boundaries | Feature failure tests; `tests/test_main.py::test_backend_can_recover_after_failure` | Pass |
+| FR-15, NFR-02 | Failure boundaries | Feature failure tests; `tests/test_main.py::test_backend_can_recover_after_failure`, `volume/tests/test_volume_control.py::test_partial_failure_reports_applied_steps` | Pass |
 | NFR-01 | Processing path | `tests/test_performance_privacy.py::test_command_processing_meets_two_second_target_over_100_runs` | Pass for application overhead; excludes real STT latency |
 | NFR-03 | MediaController interface | Architecture inspection; injected backend tests | Verified in source review |
 | NFR-04–NFR-05 | Quality automation | `scripts/run_checks.py`, `.github/workflows/ci.yml`, `tests/test_traceability.py` (fails if this matrix cites a missing test) | Local gates pass; hosted run pending push |
