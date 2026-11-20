@@ -55,6 +55,32 @@ Say one command at a time. Press Ctrl+C to quit. Aliases include Increase Volume
 Decrease Volume, Next Track, and Previous Track. Backend success means the
 request was accepted; the application does not independently read playback state.
 
+## Troubleshooting voice input
+
+On Linux, PortAudio may print ALSA/JACK probing messages for unused devices.
+Use the application's listening prompt and specific retry reason to identify
+whether input opening, speech detection, or the recognition service failed.
+No audio or transcript is included in these status messages.
+
+```bash
+python -m src.main --list-microphones
+python -m src.main --microphone pulse --listen-timeout 10 --energy-threshold 150
+```
+
+`--microphone` accepts an exact device name or its listed index; select an input,
+not a speaker/monitor. `pulse` uses the desktop audio service where available.
+Wait for **Listening... speak now.** before speaking. A timeout means speech did
+not cross the detection threshold; an unintelligible result means audio was
+captured; a service failure indicates the recognition request failed. A hardware
+stream that did not open is reported as an audio failure rather than asserted.
+
+The optional energy threshold sets a fixed speech-detection threshold: lower
+values are more sensitive, and background media/noise can trigger capture. Tune
+it for the microphone and room. The default adaptive recognizer behavior and
+five-second speech-start wait remain unchanged when no options are supplied.
+These options need a real microphone test; passing mocked tests alone does not
+establish physical recognition success.
+
 ## Verification and reports
 
 ```bash

@@ -113,3 +113,62 @@ def test_voice_capture_meets_component_response_target_over_100_runs():
         durations.append(time.perf_counter() - started)
 
     assert sum(duration < 2 for duration in durations) >= 95
+
+
+@pytest.mark.parametrize("error, message", [
+    (sr.WaitTimeoutError(), "No speech detected"),
+    (sr.UnknownValueError(), "not understood"),
+    (sr.RequestError("provider-internal-detail"), "Speech service request failed"),
+    (OSError("driver-internal-detail"), "Audio input or recognition failed"),
+])
+def test_capture_explains_failure_and_resets_status_after_recovery(error, message):
+    from unittest.mock import MagicMock
+
+    recognizer = FakeRecognizer("Pause")
+    original = recognizer.listen
+    recognizer.listen = MagicMock(side_effect=error)
+    voice = build_voice_input(recognizer)
+    assert voice.capture() is None
+    assert message in voice.last_error
+    assert "internal-detail" not in voice.last_error
+    recognizer.listen = original
+    assert voice.capture() == "Pause"
+    assert voice.last_error is None
+
+
+def test_capture_announces_ready_only_after_opening_input():
+    events = []
+
+    class Microphone(FakeMicrophone):
+        def __enter__(self):
+            events.append("opened")
+            return super().__enter__()
+
+    voice = VoiceInput(
+        recognizer=FakeRecognizer(), microphone_factory=Microphone,
+        on_listening=lambda: events.append("ready"),
+    )
+    assert voice.capture() == "Volume Up"
+    assert events == ["opened", "ready"]
+
+
+def test_capture_reports_an_unopened_microphone_stream():
+    class BrokenMicrophone(sr.Microphone):
+        def __init__(self):
+            self.stream = None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    voice = VoiceInput(recognizer=FakeRecognizer(), microphone_factory=BrokenMicrophone)
+    assert voice.capture() is None
+    assert "Audio input" in voice.last_error
+
+
+def test_blank_transcription_has_a_retry_reason():
+    voice = build_voice_input(FakeRecognizer("  "))
+    assert voice.capture() is None
+    assert "no text" in voice.last_error

@@ -1,6 +1,11 @@
 from typing import Callable, Optional
+import argparse
+from functools import partial
+import math
 import sys
 import time
+
+import speech_recognition as sr
 
 from src.command_parser import parse_command
 from src.common import Command, MediaController
@@ -51,7 +56,10 @@ def listen_once(
     """Capture one phrase, act on it and report what happened."""
     text = voice_input.capture()
     if text is None:
-        output("No command heard or recognition unavailable. Try again.")
+        output(
+            getattr(voice_input, "last_error", None)
+            or "No command heard or recognition unavailable. Try again."
+        )
         return
     result = dispatcher.handle_text(text)
     if result:
@@ -69,13 +77,55 @@ def run(
         time.sleep(0.1)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Voice assistant for multimedia controls")
+    parser.add_argument("--list-microphones", action="store_true", help="List audio device names")
+    parser.add_argument("--microphone", help="Input device index or exact name, e.g. pulse")
+    parser.add_argument(
+        "--listen-timeout", type=float, default=5.0, help="Wait for speech in seconds"
+    )
+    parser.add_argument(
+        "--energy-threshold", type=float, help="Speech sensitivity; try 150 if quiet"
+    )
+    args = parser.parse_args(argv)
+    for value in (args.listen_timeout, args.energy_threshold):
+        if value is not None and (not math.isfinite(value) or value <= 0):
+            parser.error("Timeout and energy threshold must be finite numbers greater than zero")
+
     try:
+        microphone_factory = None
+        if args.list_microphones or args.microphone is not None:
+            names = sr.Microphone.list_microphone_names()
+            if args.list_microphones:
+                for index, name in enumerate(names):
+                    print(f"{index}: {name}")
+                return 0
+            if args.microphone.isdecimal():
+                index = int(args.microphone)
+            else:
+                if args.microphone not in names:
+                    raise ValueError(
+                        "Unknown microphone. Use --list-microphones to choose an input"
+                    )
+                index = names.index(args.microphone)
+            if index >= len(names):
+                raise ValueError("Microphone index is outside the listed device range")
+            microphone_factory = partial(sr.Microphone, device_index=index)
+            print(f"Selected microphone: {names[index]}")
         dispatcher = Dispatcher(OSMediaController())
-    except RuntimeError as exc:
+    except (RuntimeError, ValueError, AttributeError, OSError) as exc:
         print(f"Cannot start voice assistant: {exc}")
         return 1
-    voice_input = VoiceInput()
+    recognizer = sr.Recognizer()
+    if args.energy_threshold is not None:
+        recognizer.energy_threshold = args.energy_threshold
+        recognizer.dynamic_energy_threshold = False
+    voice_input = VoiceInput(
+        recognizer=recognizer,
+        microphone_factory=microphone_factory,
+        listen_timeout=args.listen_timeout,
+        on_listening=lambda: print("Listening... speak now.", flush=True),
+    )
     print("Voice assistant ready. Say a command (Ctrl+C to quit).")
     try:
         run(voice_input, dispatcher)
